@@ -1,0 +1,154 @@
+Two threads printing their messages:
+#include<iostream>
+#include<thread>
+using namespace std;
+
+void messagePrint1()
+{
+cout << "Hello i am thread 1" << endl;
+}
+void messagePrint2()
+{
+cout << "Hello i am thread 2" << endl;
+}
+
+int main()
+{
+
+thread t1(messagePrint1);
+thread t2(messagePrint2);
+
+t1.join();
+t2.join();
+
+cout << "Both threads printed their messages successfully" << endl;
+
+return 0;
+}
+====================================================================================
+Check with thread that number is even or odd:
+#include<iostream>
+#include<thread>
+using namespace std;
+
+void checkEvenodd(int number)
+{
+if (number % 2 == 0)
+{
+cout << "Number is even" << endl;
+}
+else
+{
+cout << "Number is odd" << endl;
+}
+}
+int main()
+{
+ int num;
+ cout << "Enter an integer" << endl;
+ cin >> num;
+ 
+ thread t(checkEvenodd, num);
+ t.join();
+ 
+return 0;
+}
+=====================================================================================
+5 threads in a loop and each thread prints its number:
+#include <iostream>
+#include <thread>
+
+using namespace std;
+
+void printNumber(int n) {
+    cout << "Thread number: " << n << endl;
+}
+
+int main() {
+    thread t[5];  // array of 5 threads
+
+    for (int i = 0; i < 5; i++) {
+        t[i] = thread(printNumber, i + 1); // launch thread
+    }
+
+    for (int i = 0; i < 5; i++) {
+        t[i].join(); // wait for thread to finish
+    }
+
+    return 0;
+}
+===================================================================================
+#include <iostream>
+#include <thread>
+using namespace std;
+
+const int SIZE = 10;
+int numbers[SIZE] = {1, 4, 5, 7, 8, 10, 13, 16, 19, 20};
+int evenSum = 0;
+int oddSum = 0;
+
+// Function to calculate sum of even numbers
+void sumEven() {
+    for (int i = 0; i < SIZE; i++) {
+        if (numbers[i] % 2 == 0) {
+            evenSum += numbers[i];
+        }
+    }
+}
+
+// Function to calculate sum of odd numbers
+void sumOdd() {
+    for (int i = 0; i < SIZE; i++) {
+        if (numbers[i] % 2 != 0) {
+            oddSum += numbers[i];
+        }
+    }
+}
+
+int main() {
+    // Create two threads
+    thread t1(sumEven);
+    thread t2(sumOdd);
+
+    // Wait for both threads to finish
+    t1.join();
+    t2.join();
+
+    // Print results
+    cout << "Sum of even numbers: " << evenSum << endl;
+    cout << "Sum of odd numbers: " << oddSum << endl;
+
+    return 0;
+}
+====================================================================================
+Create three threads that perform simulated work using sleep_for, and ensure the main thread waits for them using join().
+#include <iostream>
+#include <thread>
+#include <chrono>
+
+using namespace std;
+
+// Function for simulated work
+void doWork(int threadNum, int seconds) {
+    cout << "Thread " << threadNum << " started working..." << endl;
+    this_thread::sleep_for(chrono::seconds(seconds)); // simulate work
+    cout << "Thread " << threadNum << " finished after " << seconds << " seconds." << endl;
+}
+
+int main() {
+    // Create three threads with different sleep durations
+    thread t1(doWork, 1, 2);
+    thread t2(doWork, 2, 3);
+    thread t3(doWork, 3, 1);
+
+    // Wait for all threads to finish
+    t1.join();
+    t2.join();
+    t3.join();
+
+    cout << "All threads completed. Main thread exiting." << endl;
+
+    return 0;
+}
+========================================================================================
+End
