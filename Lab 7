@@ -1,0 +1,284 @@
+Question:Q1: Performance Analysis of Array Operations
+Task Overview
+• Array Generation: Create an array of 10,000 random integers.
+• Operations:
+o Compute the sum of the array.
+o Calculate the average of the array.
+o Identify the most common numbers.
+o Determine the frequency of each number.
+o Find missing numbers in a specified range (e.g., 1–10).
+Methodology
+1. Sequential Execution:
+o Implement each operation sequentially.
+o Record the execution time for each operation.
+2. Multithreaded Execution:
+o Use 5 and 6 threads to parallelize the operations.
+o Record the execution time for each multithreaded execution.
+3. Performance Comparison:
+o Compare the execution times of sequential and multithreaded executions.
+o Analyze the performance improvement achieved through multithreading.
+
+Solution:
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
+#include <algorithm>
+#include <random>
+#include <chrono>
+#include <thread>
+#include <mutex>
+
+using namespace std;
+using namespace chrono;
+
+const int SIZE = 10000;
+vector<int> arr(SIZE);
+
+// For timing
+auto now() { return high_resolution_clock::now(); }
+
+// Shared results
+int totalSum = 0;
+double avg = 0;
+unordered_map<int, int> frequencyMap;
+vector<int> mostCommon;
+vector<int> missing;
+mutex mtx;
+
+// Generate random array
+void generateArray() {
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dis(1, 20);
+    for (int& x : arr) x = dis(gen);
+}
+
+// Sequential operations
+void sequentialOperations() {
+    auto start = now();
+
+    // Sum
+    int sum = 0;
+    for (int x : arr) sum += x;
+
+    // Average
+    double average = (double)sum / arr.size();
+
+    // Frequency count
+    unordered_map<int, int> freq;
+    for (int x : arr) freq[x]++;
+
+    // Most common numbers
+    int maxFreq = 0;
+    vector<int> most;
+    for (auto& [num, f] : freq) {
+        if (f > maxFreq) {
+            maxFreq = f;
+            most = {num};
+        } else if (f == maxFreq) {
+            most.push_back(num);
+        }
+    }
+
+    // Missing numbers in 1–10
+    unordered_set<int> existing(arr.begin(), arr.end());
+    vector<int> missingInRange;
+    for (int i = 1; i <= 10; ++i)
+        if (existing.find(i) == existing.end())
+            missingInRange.push_back(i);
+
+    auto end = now();
+
+    cout << "Sequential Execution Time: "
+         << duration_cast<milliseconds>(end - start).count()
+         << " ms\n\n";
+}
+
+// Parallel worker functions
+void computeSum(int start, int end) {
+    int localSum = 0;
+    for (int i = start; i < end; ++i) localSum += arr[i];
+    lock_guard<mutex> lock(mtx);
+    totalSum += localSum;
+}
+
+void computeFrequency(int start, int end) {
+    unordered_map<int, int> localFreq;
+    for (int i = start; i < end; ++i) localFreq[arr[i]]++;
+
+    lock_guard<mutex> lock(mtx);
+    for (auto& [num, f] : localFreq) frequencyMap[num] += f;
+}
+
+void computeMostCommon() {
+    int maxFreq = 0;
+    for (auto& [num, f] : frequencyMap)
+        if (f > maxFreq) maxFreq = f;
+
+    for (auto& [num, f] : frequencyMap)
+        if (f == maxFreq)
+            mostCommon.push_back(num);
+}
+
+void computeMissing() {
+    unordered_set<int> existing(arr.begin(), arr.end());
+    for (int i = 1; i <= 10; ++i)
+        if (existing.find(i) == existing.end())
+            missing.push_back(i);
+}
+
+// Thread controller
+void multithreadedExecution(int threadCount) {
+    auto start = now();
+
+    totalSum = 0;
+    avg = 0;
+    frequencyMap.clear();
+    mostCommon.clear();
+    missing.clear();
+
+    vector<thread> threads;
+
+    int chunk = SIZE / threadCount;
+
+    // Start sum and frequency threads
+    for (int i = 0; i < threadCount; ++i) {
+        int s = i * chunk;
+        int e = (i == threadCount - 1) ? SIZE : s + chunk;
+        threads.emplace_back(computeSum, s, e);
+        threads.emplace_back(computeFrequency, s, e);
+    }
+
+    for (auto& t : threads) t.join();
+    threads.clear();
+
+    // Avg
+    avg = (double)totalSum / SIZE;
+
+    // Common and missing
+    thread t1(computeMostCommon);
+    thread t2(computeMissing);
+
+    t1.join();
+    t2.join();
+
+    auto end = now();
+
+    cout << "Multithreaded Execution (" << threadCount << " threads) Time: "
+         << duration_cast<milliseconds>(end - start).count()
+         << " ms\n\n";
+}
+
+int main() {
+    generateArray();
+
+    cout << "=== Performance Analysis ===\n\n";
+
+    cout << "1. Sequential Version\n";
+    sequentialOperations();
+
+    cout << "2. Multithreaded with 5 threads\n";
+    multithreadedExecution(5);
+
+    cout << "3. Multithreaded with 6 threads\n";
+    multithreadedExecution(6);
+
+    return 0;
+}
+==========================================================================================
+Question 2:
+#include <iostream>
+#include <vector>
+#include <thread>
+#include <chrono>
+#include <cstdlib>
+using namespace std;
+using namespace chrono;
+
+const int ROWS_A = 200;
+const int COLS_A = 100;
+const int ROWS_B = 100;
+const int COLS_B = 300;
+
+// Matrices
+vector<vector<int>> A(ROWS_A, vector<int>(COLS_A));
+vector<vector<int>> B(ROWS_B, vector<int>(COLS_B));
+vector<vector<int>> result(ROWS_A, vector<int>(COLS_B, 0));
+
+// Generate random matrices
+void generateMatrices() {
+    for (int i = 0; i < ROWS_A; i++)
+        for (int j = 0; j < COLS_A; j++)
+            A[i][j] = rand() % 10 + 1;
+
+    for (int i = 0; i < ROWS_B; i++)
+        for (int j = 0; j < COLS_B; j++)
+            B[i][j] = rand() % 10 + 1;
+}
+
+// Sequential multiplication
+void multiplySequential() {
+    for (int i = 0; i < ROWS_A; i++) {
+        for (int j = 0; j < COLS_B; j++) {
+            result[i][j] = 0;
+            for (int k = 0; k < COLS_A; k++) {
+                result[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+}
+
+// Thread worker function
+void multiplyPart(int startRow, int endRow) {
+    for (int i = startRow; i < endRow; i++) {
+        for (int j = 0; j < COLS_B; j++) {
+            result[i][j] = 0;
+            for (int k = 0; k < COLS_A; k++) {
+                result[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+}
+
+// Multithreaded multiplication
+void multiplyWithThreads(int numThreads) {
+    vector<thread> threads;
+    int chunk = ROWS_A / numThreads;
+
+    for (int i = 0; i < numThreads; i++) {
+        int start = i * chunk;
+        int end = (i == numThreads - 1) ? ROWS_A : start + chunk;
+        threads.push_back(thread(multiplyPart, start, end));
+    }
+
+    for (auto& t : threads) t.join();
+}
+
+int main() {
+    generateMatrices();
+
+    // Sequential
+    auto start = high_resolution_clock::now();
+    multiplySequential();
+    auto end = high_resolution_clock::now();
+    auto timeSeq = duration_cast<milliseconds>(end - start).count();
+    cout << "Sequential time: " << timeSeq << " ms\n";
+
+    // 5 Threads
+    start = high_resolution_clock::now();
+    multiplyWithThreads(5);
+    end = high_resolution_clock::now();
+    auto time5 = duration_cast<milliseconds>(end - start).count();
+    cout << "Multithreaded (5 threads) time: " << time5 << " ms\n";
+
+    // 6 Threads
+    start = high_resolution_clock::now();
+    multiplyWithThreads(6);
+    end = high_resolution_clock::now();
+    auto time6 = duration_cast<milliseconds>(end - start).count();
+    cout << "Multithreaded (6 threads) time: " << time6 << " ms\n";
+
+    return 0;
+}
+===============================================================================================
